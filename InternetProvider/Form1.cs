@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
-using System.IO;
 using System.Linq;
-using System.Threading;
 using System.Windows.Forms;
 
 namespace InternetProvider
@@ -100,11 +97,11 @@ namespace InternetProvider
 
         private void DrawInformation(string q, Label label)
         {
-            List<string> data = _dataBaseManager.GetRowData(q);
+            Dictionary<string, string> data = _dataBaseManager.GetRowData(q);
             int index = 0;
             _dataBaseManager.GetColumnNameList(q).ForEach(header =>
             {
-                label.Text += $"{header}: {_dataBaseManager.GetCustomName(header, data[index++], 1)}\n";
+                label.Text += $"{header}: {_dataBaseManager.GetCustomName(header, data.ElementAt(index++).Value, 1)}\n";
             });
         }
 
@@ -404,7 +401,7 @@ namespace InternetProvider
         {
             if(TableValidation(dataGridView1, true))
             {
-                Dictionary<string, string> clientInfo = _dataBaseManager.GetRowDataDic($"Select * From (Клієнт Inner Join Договір On Договір.[Код клієнта] = Клієнт.[Код клієнта]) Inner Join Тарифи On Договір.[Код тарифу] = Тарифи.Код WHERE Клієнт.[Код клієнта] = {dataGridView1.Rows[dataGridView1.CurrentRow.Index].Cells[0].Value}");
+                Dictionary<string, string> clientInfo = _dataBaseManager.GetRowData($"Select * From (Клієнт Inner Join Договір On Договір.[Код клієнта] = Клієнт.[Код клієнта]) Inner Join Тарифи On Договір.[Код тарифу] = Тарифи.Код WHERE Клієнт.[Код клієнта] = {dataGridView1.Rows[dataGridView1.CurrentRow.Index].Cells[0].Value}");
                 Dictionary<string, string> d = new Dictionary<string, string>()
                         {
                             { "{dId}", clientInfo["Номер договору"] },

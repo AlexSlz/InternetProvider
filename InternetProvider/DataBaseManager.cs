@@ -73,13 +73,12 @@ namespace InternetProvider
             {
                 string q = @"Select * From
                                 ((((([Витрати клієнтів] Inner Join
-                                Договір On[Витрати клієнтів].[Номер договору] = Договір.[Номер договору]) Inner Join
+                                Договір On [Витрати клієнтів].[Номер договору] = Договір.[Номер договору]) Inner Join
                                 Клієнт On Договір.[Код клієнта] = Клієнт.[Код клієнта]) Inner Join
                                 Поповнення On Поповнення.[Номер договору] = Договір.[Номер договору]) Inner Join
                                 Райони On Клієнт.[Код района] = Райони.Код) Inner Join
                                 [Статус клієнта] On Клієнт.[Статус підключення] = [Статус клієнта].Код) Inner Join
-                                Тарифи On[Витрати клієнтів].[Код тарифу] = Тарифи.Код
-                                        And Договір.[Код тарифу] = Тарифи.Код";
+                                Тарифи On Договір.[Код тарифу] = Тарифи.Код";
 
                 OleDbCommand cmd = new OleDbCommand(q, conn);
                 cmd.ExecuteNonQuery();
@@ -98,7 +97,7 @@ namespace InternetProvider
 
         public bool DeleteRelatedRows(string table, string index)
         {
-            DialogResult dialogResult = MessageBox.Show($"Ви точно хочете видалити елемент з таблиці {table}?", "!!!", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            DialogResult dialogResult = MessageBox.Show($"Ви точно хочете видалити елемент з таблиці {table}?", "DeleteRelatedRows", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
             if (dialogResult == DialogResult.Yes)
             {
                 DeleteRow(table, GetColumnNameList($"SELECT * FROM [{table}]")[0], index);
@@ -160,15 +159,11 @@ namespace InternetProvider
             Random random = new Random();
             int color = 256;
             int minColor = 128;
-            GetFullData($"SELECT * FROM [{name}]").ForEach(item =>
-            {
-                /*                int r = (Color.White.R + random.Next(color)) / 2,
-                                    g = (Color.White.G + random.Next(color)) / 2,
-                                    b = (Color.White.B + random.Next(color)) / 2;*/
-                int r = random.Next(minColor += 15, color), 
-                    g = random.Next(minColor += 10, color), 
-                    b = random.Next(minColor -= 25, color);
-                value.Add(item[index], Color.FromArgb(r, g, b));
+            GetFullData($"SELECT * FROM [{name}]").ForEach(item => {
+                int r = random.Next(minColor += 15, color),
+                g = random.Next(minColor += 10, color),
+                b = random.Next(minColor -= 25, color);
+                value.Add(item.ElementAt(index).Value, Color.FromArgb(r, g, b));
             });
             return value;
         }
@@ -215,7 +210,7 @@ namespace InternetProvider
         {
             List<TabManager.inputBlanks> inputBlanks = new List<TabManager.inputBlanks>();
 
-            List<string> data = GetRowData(q);
+            Dictionary<string, string> data = GetRowData(q);
             int index = 0;
             GetColumnNameList(q).ForEach(header =>
             {
@@ -224,7 +219,7 @@ namespace InternetProvider
                     disableName.ForEach(item => {
                         if (header.Contains(item)) enabled = false;
                     });
-                inputBlanks.Add(new TabManager.inputBlanks { columnName = header, value = GetCustomName(header, data[index++], 1), enabled = enabled }); ;
+                inputBlanks.Add(new TabManager.inputBlanks { columnName = header, value = GetCustomName(header, data.ElementAt(index++).Value, 1), enabled = enabled }); ;
             });
             return inputBlanks;
         }
@@ -237,7 +232,6 @@ namespace InternetProvider
                 index = $"'{index}'";
             }
             OleDbCommand cmd = new OleDbCommand($"SELECT * FROM [{table}] WHERE [{customName}] = {index}", conn);
-            //MessageBox.Show($"SELECT * FROM [{table}] WHERE [{customName}] = {index}");
             OleDbDataReader reader = cmd.ExecuteReader();
             reader.Read();
             string value = reader.GetValue(i).ToString();
@@ -276,22 +270,33 @@ namespace InternetProvider
             reader.Close();
             return list;
         }
-
-        public List<string> GetRowData(string q)
+        public List<Dictionary<string, string>> GetFullData(string q)
         {
-            List<string> list = new List<string>();
+            List<Dictionary<string, string>> list = new List<Dictionary<string, string>>();
             OleDbCommand cmd = new OleDbCommand(q, conn);
-            OleDbDataReader reader = cmd.ExecuteReader();
-            reader.Read();
-            for (int i = 0; i < reader.FieldCount; i++)
+            try
             {
-                list.Add(reader.GetValue(i).ToString());
+                using(OleDbDataReader reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        Dictionary<string, string> temp = new Dictionary<string, string>();
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            temp.Add(reader.GetName(i), reader.GetValue(i).ToString());
+                        }
+                        list.Add(temp);
+                    }
+                }
             }
-            reader.Close();
+            catch (Exception ex)
+            {
+                MessageBox.Show($"{q}\n\n{ex.Message}", "GetFullData", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
             return list;
         }
 
-        public Dictionary<string, string> GetRowDataDic(string q)
+        public Dictionary<string, string> GetRowData(string q)
         {
             Dictionary<string, string> dict = new Dictionary<string, string>();
             List<string> colNames = GetColumnNameList(q);
@@ -305,31 +310,6 @@ namespace InternetProvider
             });
             reader.Close();
             return dict;
-        }
-
-        public List<List<string>> GetFullData(string q)
-        {
-            List<List<string>> list = new List<List<string>>();
-            OleDbCommand cmd = new OleDbCommand(q, conn);
-            try
-            {
-                OleDbDataReader reader = cmd.ExecuteReader();
-                while (reader.Read())
-                {
-                    List<string> item = new List<string>();
-                    for (int i = 0; i < reader.FieldCount; i++)
-                    {
-                        item.Add(reader.GetValue(i).ToString());
-                    }
-                    list.Add(item);
-                }
-                reader.Close();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"{q}\n\n{ex.Message}", "GetFullData", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            return list;
         }
 
         public int CountRow(string table, string addons = "")
@@ -405,26 +385,27 @@ namespace InternetProvider
         {
             ShowMoneyError = true;
             string q = @"Select Клієнт.[Код клієнта], Договір.[Номер договору], Договір.[Код тарифу], Тарифи.[Ціна на Місяць] From
-                                (Клієнт Inner Join
-                                Договір On Договір.[Код клієнта] = Клієнт.[Код клієнта]) Inner Join
-                                Тарифи On Договір.[Код тарифу] = Тарифи.Код";
-            List<List<string>> users = GetFullData(q);
-            foreach (List<string> user in users)
+                                            (Клієнт Inner Join
+                                            Договір On Договір.[Код клієнта] = Клієнт.[Код клієнта]) Inner Join
+                                            Тарифи On Договір.[Код тарифу] = Тарифи.Код";
+            List<Dictionary<string,string>> data = GetFullData(q);
+            foreach (Dictionary<string, string> info in data)
             {
-                DateTime time = (CountRow("Витрати клієнтів", $"WHERE [Номер договору] = {user[1]}") > 0) ? DateTime.Parse(ExecuteQueryValue($"Select [Витрати клієнтів].[Дата наступної оплати] From [Витрати клієнтів] WHERE ([Код] = {GetLastId("Витрати клієнтів", $"WHERE [Номер договору] = {user[1]}")}) AND ([Номер договору] = {user[1]})")) : DateTime.Now;
+                DateTime time = (CountRow("Витрати клієнтів", $"WHERE [Номер договору] = {info["Номер договору"]}") > 0) ? DateTime.Parse(ExecuteQueryValue($"Select [Витрати клієнтів].[Дата наступної оплати] From [Витрати клієнтів] WHERE ([Код] = {GetLastId("Витрати клієнтів", $"WHERE [Номер договору] = {info["Номер договору"]}")}) AND ([Номер договору] = {info["Номер договору"]})")) : DateTime.Now;
                 int status = (time > DateTime.Now) ? 1 : 2;
-                if (GetMoney(user[1]) >= long.Parse(user[3]) && time <= DateTime.Now)
+                if (GetMoney(info["Номер договору"]) >= long.Parse(info["Ціна на Місяць"]) && time <= DateTime.Now)
                 {
-                    ExecuteQueryBool($"INSERT INTO [Витрати клієнтів] VALUES ({GetLastId("Витрати клієнтів") + 1}, {user[1]}, {user[2]}, '{DateTime.Now.ToString("dd/MM/yyyy HH:mm")}', '{DateTime.Now.AddDays(addTime).ToString("dd/MM/yyyy HH:mm")}', {user[3]})");
+                    ExecuteQueryBool($"INSERT INTO [Витрати клієнтів] VALUES ({GetLastId("Витрати клієнтів") + 1}, {info["Номер договору"]}, '{DateTime.Now.ToString("dd/MM/yyyy HH:mm")}', '{DateTime.Now.AddDays(addTime).ToString("dd/MM/yyyy HH:mm")}', {info["Ціна на Місяць"]})");
                     status = 1;
-                }else if (GetMoney(user[1]) <= 0 && time <= DateTime.Now && autoDelete)
-                {
-                    DeleteRow("Поповнення", "Номер договору", user[1]);
-                    DeleteRow("Витрати клієнтів", "Номер договору", user[1]);
                 }
-                if (GetMoney(user[1]) <= -1)
+                else if (GetMoney(info["Номер договору"]) <= 0 && time <= DateTime.Now && autoDelete)
+                {
+                    DeleteRow("Поповнення", "Номер договору", info["Номер договору"]);
+                    DeleteRow("Витрати клієнтів", "Номер договору", info["Номер договору"]);
+                }
+                if (GetMoney(info["Номер договору"]) <= -1)
                     status = 3;
-                ExecuteQueryBool($"UPDATE [Клієнт] SET [Баланс] = {GetMoney(user[1])}, [Статус підключення] = {status} WHERE [Код клієнта] = {user[0]}");
+                ExecuteQueryBool($"UPDATE [Клієнт] SET [Баланс] = {GetMoney(info["Номер договору"])}, [Статус підключення] = {status} WHERE [Код клієнта] = {info["Код клієнта"]}");
             }
         }
 
@@ -443,7 +424,7 @@ namespace InternetProvider
             {
                 if (ShowMoneyError)
                 {
-                    DialogResult dialogResult = MessageBox.Show($"У клієнта з номером договору = {index}, сталась помилка! \nВони скинуті до -1!", "!!!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    DialogResult dialogResult = MessageBox.Show($"У клієнта з номером договору = {index}, сталась помилка! \nВони скинуті до -1!", "GetMoney", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     ShowMoneyError = false;
                 }
                 return -1;
@@ -461,7 +442,7 @@ namespace InternetProvider
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"{q}\n\n{ex.Message}", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"{q}\n\n{ex.Message}", "ExecuteQueryBool", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
             }
         }
@@ -491,7 +472,7 @@ namespace InternetProvider
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"{ex.Message}", "!!!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"{ex.Message}", "connectOtherDataBase", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -504,12 +485,12 @@ namespace InternetProvider
                 conn.Open();
                 if (CheckTables())
                 {
-                    MessageBox.Show("База даних успішно підключена!", "!!!", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show("База даних успішно підключена!", "ReOpenConnection", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
             catch (Exception ex)
             {
-                DialogResult dialogResult = MessageBox.Show($"З підключенням до бази даних сталася помилка! \n\n{ex.Message}\n\nСпробувати підключити до іншої бази?", "!!!", MessageBoxButtons.YesNo, MessageBoxIcon.Error);
+                DialogResult dialogResult = MessageBox.Show($"З підключенням до бази даних сталася помилка! \n\n{ex.Message}\n\nСпробувати підключити до іншої бази?", "ReOpenConnection", MessageBoxButtons.YesNo, MessageBoxIcon.Error);
                 
                 if(dialogResult == DialogResult.Yes)
                 {

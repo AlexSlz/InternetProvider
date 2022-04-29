@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using Word = Microsoft.Office.Interop.Word;
 using Excel = Microsoft.Office.Interop.Excel;
@@ -86,7 +84,7 @@ namespace InternetProvider
             {
                 Object newFileName = Path.Combine(_path, _wordFolder, $"Договір{items["{dId}"]}.{DateTime.Now.ToString("dd-MM-(HH-mm-ss)")}.docx");
                 app.ActiveDocument.SaveAs2(newFileName);
-                MessageBox.Show($"Файл договору {newFileName} успішно створено!", "!!!", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show($"Файл договору {newFileName} успішно створено!", "FillBlankFile", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 app.ActiveDocument.Close();
                 app.Quit();
             }
@@ -110,14 +108,14 @@ namespace InternetProvider
             {
                 document.Close();
                 application.Quit();
-                MessageBox.Show($"З експортуванням таблиці {tableName}, сталася помилка!", "!!!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"З експортуванням таблиці {tableName}, сталася помилка!", "CreateWordFile", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
             {
                 document.SaveAs2(Path.Combine(_path, _wordFolder, $"{tableName}({DateTime.Now.ToString("HH-mm-ss")}).docx"));
                 document.Close();
                 application.Quit();
-                MessageBox.Show($"Таблиця {tableName} успішно експортована!", "!!!", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show($"Таблиця {tableName} успішно експортована!", "CreateWordFile", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
 
@@ -128,7 +126,7 @@ namespace InternetProvider
             Excel.Workbook workbook = application.Workbooks.Add(Type.Missing);
             try
             {
-                List<List<string>> tables = _dataBaseManager.GetFullData($"SELECT * FROM [{tableName}]");
+                List<Dictionary<string, string>> tables = _dataBaseManager.GetFullData($"SELECT * FROM [{tableName}]");
                 List<string> columns = _dataBaseManager.GetColumnNameList($"SELECT * FROM [{tableName}]");
 
                 bool column = true;
@@ -138,7 +136,7 @@ namespace InternetProvider
                     for (int j = 0; j < tables[i].Count; j++)
                     {
                         application.Cells[1, j + 1].Font.Bold = 1;
-                        application.Cells[i + offset, j + 1] = (i == 0 && column) ? columns[j] : tables[i][j];
+                        application.Cells[i + offset, j + 1] = (i == 0 && column) ? columns[j] : tables[i].ElementAt(j).Value;
                     }
                     if (column)
                     {
@@ -151,19 +149,19 @@ namespace InternetProvider
             catch (Exception ex)
             {
                 application.Quit();
-                MessageBox.Show($"З експортуванням таблиці {tableName}, сталася помилка!", "!!!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"З експортуванням таблиці {tableName}, сталася помилка!", "CreateExcelFile", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
             {
                 workbook.SaveAs(Path.Combine(_path, _excelFolder, $"{tableName}({DateTime.Now.ToString("HH-mm-ss")}).xls"));
                 application.Quit();
-                MessageBox.Show($"Таблиця {tableName} успішно експортована!", "!!!", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show($"Таблиця {tableName} успішно експортована!", "CreateExcelFile", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
 
         private void GenerateTable(string tableName, Word.Document document, Word.Paragraph p, int fontSize = 14)
         {
-            List<List<string>> tables = _dataBaseManager.GetFullData($"SELECT * FROM [{tableName}]");
+            List<Dictionary<string, string>> tables = _dataBaseManager.GetFullData($"SELECT * FROM [{tableName}]");
             List<string> column = _dataBaseManager.GetColumnNameList($"SELECT * FROM [{tableName}]");
             Word.Table table = document.Tables.Add(p.Range, tables.Count + 1, tables[0].Count);
             table.Borders.Enable = 1;
@@ -182,7 +180,7 @@ namespace InternetProvider
                     }
                     else
                     {
-                        cell.Range.Text = tables[row.Index - 2][cell.Column.Index - 1];
+                        cell.Range.Text = tables[row.Index - 2].ElementAt(cell.Column.Index - 1).Value;
                         cell.Shading.BackgroundPatternColor = ((cell.Column.Index + row.Index) % 2 == 0) ? Word.WdColor.wdColorGray15 : Word.WdColor.wdColorWhite;
                     }
 
