@@ -16,7 +16,6 @@ namespace InternetProvider
             { "Код тарифу", "Тарифи" },
             { "Статус підключення", "Статус клієнта" },
             { "Код района", "Райони" },
-            { "Тип житла", "Тип житла" }
         };
 
         public static Dictionary<string, Dictionary<string, Color>> TablePalette = new Dictionary<string, Dictionary<string, Color>>() {

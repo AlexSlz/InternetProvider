@@ -35,10 +35,12 @@ namespace InternetProvider
         public Form1()
         {
 
-/*            CultureInfo newCulture = (CultureInfo)System.Threading.Thread.CurrentThread.CurrentCulture.Clone();
-            newCulture.DateTimeFormat.ShortDatePattern = "dd/MM/yyyy";
-            newCulture.DateTimeFormat.DateSeparator = "/";
-            Thread.CurrentThread.CurrentCulture = newCulture;*/
+            /*            CultureInfo newCulture = (CultureInfo)System.Threading.Thread.CurrentThread.CurrentCulture.Clone();
+                        newCulture.DateTimeFormat.ShortDatePattern = "dd/MM/yyyy";
+                        newCulture.DateTimeFormat.DateSeparator = "/";
+                        Thread.CurrentThread.CurrentCulture = newCulture;*/
+
+            Addons.TryDownload();
 
             InitializeComponent();
 
@@ -115,7 +117,7 @@ namespace InternetProvider
         {
             List<TabManager.inputBlanks> _inputBlanks = new List<TabManager.inputBlanks>()
             {
-                new TabManager.inputBlanks { columnName = "Баланс", value = "1000", enabled = false },
+                new TabManager.inputBlanks { columnName = "Баланс", value = "0", enabled = false },
                 new TabManager.inputBlanks { columnName = "Статус підключення", value = "1", enabled = false },
                 new TabManager.inputBlanks { columnName = "Номер договору", value = "input0", enabled = false },
                 new TabManager.inputBlanks { columnName = "Договір.Код клієнта", value = "input0", enabled = false },
